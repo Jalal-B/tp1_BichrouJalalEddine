@@ -8,7 +8,6 @@ import jakarta.inject.Named;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 @Named
 @ViewScoped
@@ -28,73 +27,29 @@ public class Bb implements Serializable {
     private String texteRequeteJson;
     private String texteReponseJson;
 
-    // Correction : JsonUtil non @Inject
+    // Utilitaire Gemini non injecté
     private JsonUtilPourGemini jsonUtil = new JsonUtilPourGemini();
 
-    public Bb() {
-    }
+    public Bb() {}
 
-    // GETTERS & SETTERS OBLIGATOIRES POUR JSF
-
-    public String getRoleSysteme() {
-        return roleSysteme;
-    }
-    public void setRoleSysteme(String roleSysteme) {
-        this.roleSysteme = roleSysteme;
-    }
-
-    public boolean isRoleSystemeChangeable() {
-        return roleSystemeChangeable;
-    }
-    public void setRoleSystemeChangeable(boolean roleSystemeChangeable) {
-        this.roleSystemeChangeable = roleSystemeChangeable;
-    }
-
-    public String getQuestion() {
-        return question;
-    }
-    public void setQuestion(String question) {
-        this.question = question;
-    }
-
-    public String getReponse() {
-        return reponse;
-    }
-    public void setReponse(String reponse) {
-        this.reponse = reponse;
-    }
-
-    public String getConversation() {
-        return conversation.toString();
-    }
-    public void setConversation(String conversation) {
-        this.conversation = new StringBuilder(conversation);
-    }
-
-    public boolean isDebug() {
-        return debug;
-    }
-    public void setDebug(boolean debug) {
-        this.debug = debug;
-    }
-
-    public String getTexteRequeteJson() {
-        return texteRequeteJson;
-    }
-    public void setTexteRequeteJson(String texteRequeteJson) {
-        this.texteRequeteJson = texteRequeteJson;
-    }
-
-    public String getTexteReponseJson() {
-        return texteReponseJson;
-    }
-    public void setTexteReponseJson(String texteReponseJson) {
-        this.texteReponseJson = texteReponseJson;
-    }
-
-    public void toggleDebug() {
-        setDebug(!isDebug());
-    }
+    // --- GETTERS & SETTERS ---
+    public String getRoleSysteme() { return roleSysteme; }
+    public void setRoleSysteme(String roleSysteme) { this.roleSysteme = roleSysteme; }
+    public boolean isRoleSystemeChangeable() { return roleSystemeChangeable; }
+    public void setRoleSystemeChangeable(boolean roleSystemeChangeable) { this.roleSystemeChangeable = roleSystemeChangeable; }
+    public String getQuestion() { return question; }
+    public void setQuestion(String question) { this.question = question; }
+    public String getReponse() { return reponse; }
+    public void setReponse(String reponse) { this.reponse = reponse; }
+    public String getConversation() { return conversation.toString(); }
+    public void setConversation(String conversation) { this.conversation = new StringBuilder(conversation); }
+    public boolean isDebug() { return debug; }
+    public void setDebug(boolean debug) { this.debug = debug; }
+    public String getTexteRequeteJson() { return texteRequeteJson; }
+    public void setTexteRequeteJson(String texteRequeteJson) { this.texteRequeteJson = texteRequeteJson; }
+    public String getTexteReponseJson() { return texteReponseJson; }
+    public void setTexteReponseJson(String texteReponseJson) { this.texteReponseJson = texteReponseJson; }
+    public void toggleDebug() { setDebug(!isDebug()); }
 
     public String envoyer() {
         FacesContext facesContext = FacesContext.getCurrentInstance();
@@ -140,7 +95,9 @@ public class Bb implements Serializable {
             role = "Your are a travel guide. If the user type the name of a country or of a town,\nyou tell them what are the main places to visit in the country or the town\nyou tell them the average price of a meal.";
             this.listeRolesSysteme.add(new SelectItem(role, "Guide touristique"));
 
-            // Bonus : ajouter ton rôle original ici
+            // === RÔLE SYSTÈME BONUS ===
+            role = "You are a stand-up comedian. Reply to any question by making a joke or giving an answer in a humorous way. Always keep the tone funny.";
+            this.listeRolesSysteme.add(new SelectItem(role, "Humoriste"));
         }
         return this.listeRolesSysteme;
     }
