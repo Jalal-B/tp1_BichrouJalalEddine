@@ -12,178 +12,102 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Backing bean pour la page JSF index.xhtml.
- * Portée view pour conserver l'état de la conversation pendant plusieurs requêtes HTTP.
- * La portée view nécessite l'implémentation de Serializable.
- */
 @Named
 @ViewScoped
 public class Bb implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /**
-     * Rôle "système" que l'on attribuera plus tard à un LLM.
-     * Valeur par défaut que l'utilisateur peut modifier.
-     */
     private String roleSysteme;
-
-    /**
-     * Quand le rôle est choisi, il n'est plus possible de le modifier.
-     */
     private boolean roleSystemeChangeable = true;
-
-    /**
-     * Liste de tous les rôles de l'API prédéfinis.
-     */
     private List<SelectItem> listeRolesSysteme;
-
-    /**
-     * Dernière question posée par l'utilisateur.
-     */
     private String question;
-
-    /**
-     * Dernière réponse de l'API.
-     */
     private String reponse;
-
-    /**
-     * La conversation depuis le début.
-     */
     private StringBuilder conversation = new StringBuilder();
 
-    /**
-     * Contexte JSF pour afficher les messages d'erreur.
-     */
+    // Mode debug + JSON
+    private boolean debug;
+    private String texteRequeteJson;
+    private String texteReponseJson;
+
     @Inject
     private FacesContext facesContext;
+    @Inject
+    private JsonUtilPourGemini jsonUtil; // à injecter ou à instancier (new JsonUtilPourGemini())
 
-    /**
-     * Constructeur par défaut requis pour CDI.
-     */
     public Bb() {
     }
 
-    public String getRoleSysteme() {
-        return roleSysteme;
+    // ... getters/setters pour les propriétés existantes (déjà codées TP0)
+
+    public boolean isDebug() {
+        return debug;
+    }
+    public void setDebug(boolean debug) {
+        this.debug = debug;
+    }
+    public String getTexteRequeteJson() {
+        return texteRequeteJson;
+    }
+    public void setTexteRequeteJson(String texteRequeteJson) {
+        this.texteRequeteJson = texteRequeteJson;
+    }
+    public String getTexteReponseJson() {
+        return texteReponseJson;
+    }
+    public void setTexteReponseJson(String texteReponseJson) {
+        this.texteReponseJson = texteReponseJson;
+    }
+    public void toggleDebug() {
+        setDebug(!isDebug());
     }
 
-    public void setRoleSysteme(String roleSysteme) {
-        this.roleSysteme = roleSysteme;
-    }
-
-    public boolean isRoleSystemeChangeable() {
-        return roleSystemeChangeable;
-    }
-
-    public String getQuestion() {
-        return question;
-    }
-
-    public void setQuestion(String question) {
-        this.question = question;
-    }
-
-    public String getReponse() {
-        return reponse;
-    }
-
-    public void setReponse(String reponse) {
-        this.reponse = reponse;
-    }
-
-    public String getConversation() {
-        return conversation.toString();
-    }
-
-    public void setConversation(String conversation) {
-        this.conversation = new StringBuilder(conversation);
-    }
-
-    /**
-     * Envoie la question au serveur.
-     * Le serveur fait un traitement simple : copie la question en minuscules entourée de "||".
-     * Le rôle système est ajouté au début de la première réponse.
-     *
-     * @return null pour rester sur la même page.
-     */
     public String envoyer() {
         if (question == null || question.isBlank()) {
-            // Erreur ! Message d'erreur affiché dans le formulaire.
-            FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_ERROR,
-                    "Texte question vide", "Il manque le texte de la question");
+            FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_ERROR, "Texte question vide", "Il manque le texte de la question");
             facesContext.addMessage(null, message);
             return null;
         }
-
-        // Traitement de la question : entourage avec "||"
-        this.reponse = "||";
-
-        // Si c'est le début de la conversation, ajouter le rôle système
-        if (this.conversation.isEmpty()) {
-            this.reponse += roleSysteme.toUpperCase(Locale.FRENCH) + "\n";
-            // Désactive le changement du rôle système
+        try {
+            // Appel direct Gemini !
+            LlmInteraction interaction = jsonUtil.envoyerRequete(roleSysteme, question, conversation.toString());
+            this.reponse = interaction.reponseExtraite(); // réponse à afficher
+            this.texteRequeteJson = interaction.questionJson(); // JSON envoyé
+            this.texteReponseJson = interaction.reponseJson(); // JSON reçu
+            conversation.append("== User:\n").append(question).append("\n== Serveur:\n").append(reponse).append("\n");
             this.roleSystemeChangeable = false;
+        } catch (Exception e) {
+            FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_ERROR, "Problème de connexion avec l’API du LLM", e.getMessage());
+            facesContext.addMessage(null, message);
         }
-
-        this.reponse += question.toLowerCase(Locale.FRENCH) + "||";
-
-        // Mise à jour de l'historique de la conversation
-        afficherConversation();
         return null;
     }
 
-    /**
-     * Pour un nouveau chat.
-     * Retourne "index" pour terminer la portée view et créer une nouvelle instance du bean.
-     *
-     * @return "index"
-     */
     public String nouveauChat() {
+        // Réinitialisation conversation, réponse, debug et débloque le choix du rôle
+        question = "";
+        reponse = "";
+        conversation = new StringBuilder();
+        texteRequeteJson = "";
+        texteReponseJson = "";
+        this.roleSystemeChangeable = true;
         return "index";
-    }
-
-    /**
-     * Affiche la conversation dans le textArea.
-     */
-    private void afficherConversation() {
-        this.conversation.append("== User:\n")
-                .append(question)
-                .append("\n== Serveur:\n")
-                .append(reponse)
-                .append("\n");
     }
 
     public List<SelectItem> getRolesSysteme() {
         if (this.listeRolesSysteme == null) {
-            // Génère les rôles de l'API prédéfinis
             this.listeRolesSysteme = new ArrayList<>();
-
-            String role = """
-                    You are a helpful assistant. You help the user to find the information they need.
-                    If the user type a question, you answer it.
-                    """;
+            String role = "You are a helpful assistant. You help the user to find the information they need.\nIf the user type a question, you answer it.";
             this.listeRolesSysteme.add(new SelectItem(role, "Assistant"));
 
-            role = """
-                    You are an interpreter. You translate from English to French and from French to English.
-                    If the user type a French text, you translate it into English.
-                    If the user type an English text, you translate it into French.
-                    If the text contains only one to three words, give some examples of usage of these words in English.
-                    """;
+            role = "You are an interpreter. You translate from English to French and from French to English.\nIf the user type a French text, you translate it into English.\nIf the user type an English text, you translate it into French.\nIf the text contains only one to three words, give some examples of usage of these words in English.";
             this.listeRolesSysteme.add(new SelectItem(role, "Traducteur Anglais-Français"));
 
-            role = """
-                    Your are a travel guide. If the user type the name of a country or of a town,
-                    you tell them what are the main places to visit in the country or the town
-                    are you tell them the average price of a meal.
-                    """;
+            role = "Your are a travel guide. If the user type the name of a country or of a town,\nyou tell them what are the main places to visit in the country or the town\nyou tell them the average price of a meal.";
             this.listeRolesSysteme.add(new SelectItem(role, "Guide touristique"));
-        }
 
+            // Bonus: ajouter ton rôle original ici
+        }
         return this.listeRolesSysteme;
     }
 }
-
