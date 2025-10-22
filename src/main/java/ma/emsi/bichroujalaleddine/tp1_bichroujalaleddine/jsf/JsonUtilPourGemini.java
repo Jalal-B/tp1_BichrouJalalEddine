@@ -4,7 +4,6 @@ import jakarta.json.*;
 import java.io.StringReader;
 
 public class JsonUtilPourGemini {
-
     private final LlmClientPourGemini client = new LlmClientPourGemini();
 
     public LlmInteraction envoyerRequete(String roleSysteme, String question, String historique) throws RequeteException {
@@ -14,17 +13,30 @@ public class JsonUtilPourGemini {
         return new LlmInteraction(prettyPrintJson(requeteJson), prettyPrintJson(reponseJson), reponseExtraite);
     }
 
+    // CORRECTION : format Gemini Flash 2.0, tout dans "text", pas de system_instruction
     private String creerRequeteJson(String roleSysteme, String question, String historique) {
-        JsonObjectBuilder builder = Json.createObjectBuilder()
-                .add("contents", Json.createArrayBuilder()
+        // Assemble le prompt complet
+        String fullPrompt = "";
+        if (roleSysteme != null && !roleSysteme.isBlank()) {
+            fullPrompt += roleSysteme.trim() + "\n";
+        }
+        if (historique != null && !historique.isBlank()) {
+            fullPrompt += historique.trim() + "\n";
+        }
+        fullPrompt += question;
+
+        JsonArrayBuilder contents = Json.createArrayBuilder();
+        JsonObjectBuilder userMsg = Json.createObjectBuilder()
+                .add("parts", Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
-                                .add("role", "user")
-                                .add("parts", Json.createArrayBuilder()
-                                        .add(Json.createObjectBuilder()
-                                                .add("text", (historique + (historique.isEmpty() ? "" : "\n") + question)))))
-                )
-                .add("system_instruction", Json.createObjectBuilder().add("content", roleSysteme));
-        JsonObject obj = builder.build();
+                                .add("text", fullPrompt)));
+        // Optionnel : .add("role", "user") si tu veux
+        contents.add(userMsg);
+
+        JsonObject obj = Json.createObjectBuilder()
+                .add("contents", contents)
+                .build();
+
         return obj.toString();
     }
 
@@ -32,7 +44,6 @@ public class JsonUtilPourGemini {
         JsonReader reader = Json.createReader(new StringReader(reponseJson));
         JsonObject obj = reader.readObject();
         try {
-            // Chemin typique: candidates[0].content.parts[0].text
             JsonObject candidate = obj.getJsonArray("candidates").getJsonObject(0);
             JsonObject content = candidate.getJsonObject("content");
             String text = content.getJsonArray("parts").getJsonObject(0).getString("text");
@@ -45,6 +56,6 @@ public class JsonUtilPourGemini {
     private String prettyPrintJson(String rawJson) {
         JsonReader reader = Json.createReader(new StringReader(rawJson));
         JsonObject obj = reader.readObject();
-        return obj.toString(); // Pour du vrai pretty print, utiliser un outil externe ou formatter ici si besoin
+        return obj.toString();
     }
 }

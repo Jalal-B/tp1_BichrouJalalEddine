@@ -4,9 +4,7 @@ import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
 import jakarta.faces.model.SelectItem;
 import jakarta.faces.view.ViewScoped;
-import jakarta.inject.Inject;
 import jakarta.inject.Named;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,15 +28,48 @@ public class Bb implements Serializable {
     private String texteRequeteJson;
     private String texteReponseJson;
 
-    @Inject
-    private FacesContext facesContext;
-    @Inject
-    private JsonUtilPourGemini jsonUtil; // à injecter ou à instancier (new JsonUtilPourGemini())
+    // Correction : JsonUtil non @Inject
+    private JsonUtilPourGemini jsonUtil = new JsonUtilPourGemini();
 
     public Bb() {
     }
 
-    // ... getters/setters pour les propriétés existantes (déjà codées TP0)
+    // GETTERS & SETTERS OBLIGATOIRES POUR JSF
+
+    public String getRoleSysteme() {
+        return roleSysteme;
+    }
+    public void setRoleSysteme(String roleSysteme) {
+        this.roleSysteme = roleSysteme;
+    }
+
+    public boolean isRoleSystemeChangeable() {
+        return roleSystemeChangeable;
+    }
+    public void setRoleSystemeChangeable(boolean roleSystemeChangeable) {
+        this.roleSystemeChangeable = roleSystemeChangeable;
+    }
+
+    public String getQuestion() {
+        return question;
+    }
+    public void setQuestion(String question) {
+        this.question = question;
+    }
+
+    public String getReponse() {
+        return reponse;
+    }
+    public void setReponse(String reponse) {
+        this.reponse = reponse;
+    }
+
+    public String getConversation() {
+        return conversation.toString();
+    }
+    public void setConversation(String conversation) {
+        this.conversation = new StringBuilder(conversation);
+    }
 
     public boolean isDebug() {
         return debug;
@@ -46,34 +77,38 @@ public class Bb implements Serializable {
     public void setDebug(boolean debug) {
         this.debug = debug;
     }
+
     public String getTexteRequeteJson() {
         return texteRequeteJson;
     }
     public void setTexteRequeteJson(String texteRequeteJson) {
         this.texteRequeteJson = texteRequeteJson;
     }
+
     public String getTexteReponseJson() {
         return texteReponseJson;
     }
     public void setTexteReponseJson(String texteReponseJson) {
         this.texteReponseJson = texteReponseJson;
     }
+
     public void toggleDebug() {
         setDebug(!isDebug());
     }
 
     public String envoyer() {
+        FacesContext facesContext = FacesContext.getCurrentInstance();
         if (question == null || question.isBlank()) {
             FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_ERROR, "Texte question vide", "Il manque le texte de la question");
             facesContext.addMessage(null, message);
             return null;
         }
         try {
-            // Appel direct Gemini !
+            // Appel direct Gemini
             LlmInteraction interaction = jsonUtil.envoyerRequete(roleSysteme, question, conversation.toString());
-            this.reponse = interaction.reponseExtraite(); // réponse à afficher
-            this.texteRequeteJson = interaction.questionJson(); // JSON envoyé
-            this.texteReponseJson = interaction.reponseJson(); // JSON reçu
+            this.reponse = interaction.reponseExtraite();
+            this.texteRequeteJson = interaction.questionJson();
+            this.texteReponseJson = interaction.reponseJson();
             conversation.append("== User:\n").append(question).append("\n== Serveur:\n").append(reponse).append("\n");
             this.roleSystemeChangeable = false;
         } catch (Exception e) {
@@ -84,7 +119,6 @@ public class Bb implements Serializable {
     }
 
     public String nouveauChat() {
-        // Réinitialisation conversation, réponse, debug et débloque le choix du rôle
         question = "";
         reponse = "";
         conversation = new StringBuilder();
@@ -106,7 +140,7 @@ public class Bb implements Serializable {
             role = "Your are a travel guide. If the user type the name of a country or of a town,\nyou tell them what are the main places to visit in the country or the town\nyou tell them the average price of a meal.";
             this.listeRolesSysteme.add(new SelectItem(role, "Guide touristique"));
 
-            // Bonus: ajouter ton rôle original ici
+            // Bonus : ajouter ton rôle original ici
         }
         return this.listeRolesSysteme;
     }
